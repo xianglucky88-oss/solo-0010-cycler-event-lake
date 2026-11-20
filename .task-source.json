@@ -1,0 +1,84 @@
+{
+  "version": 2,
+  "task_source_schema_version": 1,
+  "project_domain": "数据工程",
+  "project_subdirection": "数仓与数据湖",
+  "delivery_profile": "local-unadmitted",
+  "baseline_tier": "local-workflow-baseline",
+  "generation_scope": {
+    "mode": "explicit",
+    "basis": "本轮只交付五个本地基线，未生成题库或评定题型容量。"
+  },
+  "production_source": "cyclerlake",
+  "workflow_ids": [
+    "ingest",
+    "seal",
+    "query"
+  ],
+  "entities": [
+    {
+      "id": "chunk_receipt",
+      "label": "采样块"
+    },
+    {
+      "id": "sample_revision",
+      "label": "采样修订"
+    },
+    {
+      "id": "segment",
+      "label": "已封存区间"
+    },
+    {
+      "id": "rejected",
+      "label": "迟到证据"
+    }
+  ],
+  "state_machines": [
+    {
+      "subject": "sample",
+      "states": [
+        "unsealed",
+        "sealed"
+      ],
+      "transitions": [
+        "unsealed->unsealed",
+        "unsealed->sealed"
+      ]
+    }
+  ],
+  "capability_families": [
+    {
+      "family": "将相邻端点封存为含质量状态的独立事实",
+      "occupied_by": [
+        "ingest"
+      ],
+      "available": false
+    }
+  ],
+  "extension_seams": [
+    {
+      "id": "interval-fact",
+      "anchor": "cyclerlake/intervals.py",
+      "entry": "seal_intervals",
+      "distinct_outcome": "将相邻端点封存为含质量状态的独立事实",
+      "mechanism": "ingest"
+    }
+  ],
+  "tension_points": [
+    {
+      "workflow_id": "ingest",
+      "description": "准时修订入湖",
+      "observable_failure": "同修订异值整块拒绝"
+    },
+    {
+      "workflow_id": "seal",
+      "description": "按端点关闭区间且保留证据",
+      "observable_failure": "水位倒退不得重写结果"
+    },
+    {
+      "workflow_id": "query",
+      "description": "返回区间和精确净电荷",
+      "observable_failure": "未知运行时拒绝"
+    }
+  ]
+}

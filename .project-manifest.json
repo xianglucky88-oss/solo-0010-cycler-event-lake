@@ -1,0 +1,106 @@
+{
+  "project_shape": "backend",
+  "modules": [
+    {
+      "id": "contract",
+      "path": "cyclerlake/contract.py",
+      "responsibility": "归一化采样及块标识"
+    },
+    {
+      "id": "lake",
+      "path": "cyclerlake/lake.py",
+      "responsibility": "维护版本、水位和原子写事务"
+    },
+    {
+      "id": "intervals",
+      "path": "cyclerlake/intervals.py",
+      "responsibility": "封存积分区间并归约"
+    },
+    {
+      "id": "__main__",
+      "path": "cyclerlake/__main__.py",
+      "responsibility": "提供文件导入与 JSON 查询入口"
+    }
+  ],
+  "workflows": [
+    {
+      "id": "ingest",
+      "name": "摄入乱序采样块",
+      "entry": "python3 -B -m cyclerlake --db demo.sqlite ingest examples/initial.json --gap-ms 12",
+      "success": "准时修订入湖",
+      "failure": "同修订异值整块拒绝",
+      "verification": "python3 -B examples/smoke.py",
+      "module_ids": [
+        "contract",
+        "lake",
+        "intervals",
+        "__main__"
+      ],
+      "steps": [
+        "执行 ingest examples/initial.json --gap-ms 12",
+        "准时修订入湖"
+      ]
+    },
+    {
+      "id": "seal",
+      "name": "封存当前水位内区间",
+      "entry": "python3 -B -m cyclerlake --db demo.sqlite ingest examples/initial.json --gap-ms 12",
+      "success": "按端点关闭区间且保留证据",
+      "failure": "水位倒退不得重写结果",
+      "verification": "python3 -B examples/smoke.py",
+      "module_ids": [
+        "contract",
+        "lake",
+        "intervals",
+        "__main__"
+      ],
+      "steps": [
+        "执行 ingest examples/initial.json --gap-ms 12",
+        "按端点关闭区间且保留证据"
+      ]
+    },
+    {
+      "id": "query",
+      "name": "读取电荷区间和迟到证据",
+      "entry": "python3 -B -m cyclerlake --db demo.sqlite query bench-larch",
+      "success": "返回区间和精确净电荷",
+      "failure": "未知运行时拒绝",
+      "verification": "python3 -B examples/smoke.py",
+      "module_ids": [
+        "__main__",
+        "lake",
+        "intervals"
+      ],
+      "steps": [
+        "执行 query bench-larch",
+        "返回区间和精确净电荷"
+      ]
+    }
+  ],
+  "complexity": {
+    "mechanisms": [
+      {
+        "id": "ingest",
+        "workflow_ids": [
+          "ingest"
+        ],
+        "behavior": "准时修订入湖"
+      },
+      {
+        "id": "seal",
+        "workflow_ids": [
+          "seal"
+        ],
+        "behavior": "按端点关闭区间且保留证据"
+      },
+      {
+        "id": "query",
+        "workflow_ids": [
+          "query"
+        ],
+        "behavior": "返回区间和精确净电荷"
+      }
+    ]
+  },
+  "sample_source": "examples/initial.json"
+}
