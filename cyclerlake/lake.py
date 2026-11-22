@@ -11,6 +11,23 @@ CREATE TABLE IF NOT EXISTS sample_revision(run TEXT, ms INTEGER, rev INTEGER, ma
 CREATE TABLE IF NOT EXISTS sample(run TEXT, ms INTEGER, rev INTEGER, ma INTEGER, chunk TEXT, source_row INTEGER, PRIMARY KEY(run,ms));
 CREATE TABLE IF NOT EXISTS rejected(run TEXT, chunk TEXT, source_row INTEGER, ms INTEGER, rev INTEGER, ma INTEGER, PRIMARY KEY(run,chunk,source_row));
 CREATE TABLE IF NOT EXISTS segment(run TEXT,start_ms INTEGER,end_ms INTEGER,left_chunk TEXT,left_row INTEGER,right_chunk TEXT,right_row INTEGER,q2 TEXT, PRIMARY KEY(run,end_ms));
+-- Settlement configuration.  Clock maps turn test milliseconds into the
+-- settlement clock the independent coulometer reads.
+CREATE TABLE IF NOT EXISTS clock_map(id TEXT PRIMARY KEY, offset_num INTEGER NOT NULL, offset_den INTEGER NOT NULL,
+    scale_num INTEGER NOT NULL, scale_den INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS meter_window(id TEXT PRIMARY KEY, seal_ms INTEGER NOT NULL,
+    start_num INTEGER NOT NULL, start_den INTEGER NOT NULL, end_num INTEGER NOT NULL, end_den INTEGER NOT NULL,
+    in_num INTEGER NOT NULL, in_den INTEGER NOT NULL, out_num INTEGER NOT NULL, out_den INTEGER NOT NULL,
+    error_num INTEGER NOT NULL, error_den INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS meter_window_run(window TEXT, run TEXT, PRIMARY KEY(window,run));
+CREATE TABLE IF NOT EXISTS work_step(id TEXT PRIMARY KEY, run TEXT NOT NULL, label TEXT,
+    start_ms INTEGER NOT NULL, end_ms INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS outage(id TEXT PRIMARY KEY, run TEXT NOT NULL, start_ms INTEGER NOT NULL, end_ms INTEGER NOT NULL,
+    max_in_num INTEGER NOT NULL, max_in_den INTEGER NOT NULL, max_out_num INTEGER NOT NULL, max_out_den INTEGER NOT NULL);
+-- Bills are append-only: a revision adds a row and never rewrites an old one.
+CREATE TABLE IF NOT EXISTS bill(step TEXT, seq INTEGER, run TEXT, in_num INTEGER, in_den INTEGER,
+    out_num INTEGER, out_den INTEGER, net_num INTEGER, net_den INTEGER, signed_seal_ms INTEGER, note TEXT,
+    PRIMARY KEY(step,seq));
 '''
 
 

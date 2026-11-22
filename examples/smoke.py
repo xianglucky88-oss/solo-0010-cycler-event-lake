@@ -6,7 +6,7 @@ import sys
 if not __package__:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from cyclerlake import ingest, query
+from cyclerlake import configure, ingest, query, report, sign
 
 with TemporaryDirectory() as temp:
     db = Path(temp) / 'cycler.sqlite'
@@ -48,4 +48,34 @@ with TemporaryDirectory() as temp:
     else:
         raise AssertionError('unknown run returned facts')
     assert query(db, 'bench-larch') == out
+
+    # --- settlement -------------------------------------------------------
+    # The gap (10..40 ms) has no sampling; an outage declares the bench could
+    # only have charged <= 20 mA there, and a sealed meter covers 10..60.
+    configure(db, {
+        'steps': [
+            {'id': 'S1', 'run': 'bench-larch', 'start_ms': 0, 'end_ms': 10},
+            {'id': 'S2', 'run': 'bench-larch', 'start_ms': 10, 'end_ms': 40},
+        ],
+        'windows': [{'id': 'W1', 'start': 10, 'end': 40, 'in': 500, 'out': 0,
+                     'error': 0, 'runs': ['bench-larch']}],
+        'outages': [{'id': 'O2', 'run': 'bench-larch', 'start_ms': 10, 'end_ms': 40,
+                     'max_in_ma': 20, 'max_out_ma': 10}],
+    })
+    steps = {entry['step']: entry for entry in report(db)['steps']}
+    # S1 is fully sampled: observed, and equal in every explanation.
+    assert steps['S1']['status'] == 'observed'
+    assert steps['S1']['observed']['in_microcoulomb'] == '2000'
+    assert steps['S1']['signable']
+    # S2 is meter-backed, not observed, and jointly bounded by the meter window
+    # (500) and the declared capability (20 mA * 30 ms = 600).  Shows in/out
+    # separately, so a zero net would not hide throughput.
+    assert steps['S2']['status'] in ('meter_ready', 'meter_pending')
+    assert steps['S2']['observed']['in_microcoulomb'] == '0'
+    assert steps['S2']['possible']['in_microcoulomb'] == ['500', '500']
+    assert steps['S2']['possible']['out_microcoulomb'] == ['0', '0']
+    assert any(w['type'] in ('sealed_meter', 'missing_capability')
+               for w in steps['S2']['witness'])
+    # Determinism: a repeated read is identical.
+    assert report(db) == report(db)
     print(json.dumps(out, sort_keys=True))

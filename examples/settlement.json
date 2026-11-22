@@ -1,0 +1,13 @@
+{
+  "clock": [{"run": "bench-larch", "offset": 0, "scale": 1}],
+  "steps": [
+    {"id": "S1", "run": "bench-larch", "label": "formation", "start_ms": 0, "end_ms": 10},
+    {"id": "S2", "run": "bench-larch", "label": "rest", "start_ms": 10, "end_ms": 40}
+  ],
+  "windows": [
+    {"id": "W1", "start": 0, "end": 10, "in": 2000, "out": 0, "error": 0, "runs": ["bench-larch"]}
+  ],
+  "outages": [
+    {"id": "O2", "run": "bench-larch", "start_ms": 10, "end_ms": 40, "max_in_ma": 20, "max_out_ma": 0}
+  ]
+}
