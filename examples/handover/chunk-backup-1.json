@@ -1,0 +1,1 @@
+{"run":"bench-switch","chunk":"backup-card-1","device":"backup","boot":1,"seal_ms":30,"samples":[{"ms":5,"rev":1,"current_ma":415},{"ms":10,"rev":1,"current_ma":420},{"ms":20,"rev":1,"current_ma":440},{"ms":30,"rev":1,"current_ma":460}]}

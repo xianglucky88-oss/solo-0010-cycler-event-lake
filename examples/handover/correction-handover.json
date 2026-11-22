@@ -1,0 +1,1 @@
+{"run":"bench-switch","id":"fix-handover-point","receipt":"r1","note":"primary local 30 recalibrated after bench log review","items":[{"device":"primary","boot":1,"ms":30,"rev":2,"current_ma":390}]}

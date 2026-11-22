@@ -4,17 +4,17 @@
     {
       "id": "contract",
       "path": "cyclerlake/contract.py",
-      "responsibility": "归一化采样及块标识"
+      "responsibility": "归一化采样、块标识与材料合同"
     },
     {
       "id": "lake",
       "path": "cyclerlake/lake.py",
-      "responsibility": "维护版本、水位和原子写事务"
+      "responsibility": "维护版本、水位、证据和原子写事务"
     },
     {
       "id": "intervals",
       "path": "cyclerlake/intervals.py",
-      "responsibility": "封存积分区间并归约"
+      "responsibility": "选择来源、封存积分区间并归约"
     },
     {
       "id": "__main__",
@@ -27,79 +27,82 @@
       "id": "ingest",
       "name": "摄入乱序采样块",
       "entry": "python3 -B -m cyclerlake --db demo.sqlite ingest examples/initial.json --gap-ms 12",
-      "success": "准时修订入湖",
+      "success": "准时修订入湖，块、设备、开机段可辨",
       "failure": "同修订异值整块拒绝",
       "verification": "python3 -B examples/smoke.py",
-      "module_ids": [
-        "contract",
-        "lake",
-        "intervals",
-        "__main__"
-      ],
-      "steps": [
-        "执行 ingest examples/initial.json --gap-ms 12",
-        "准时修订入湖"
-      ]
+      "module_ids": ["contract", "lake", "intervals", "__main__"],
+      "steps": ["执行 ingest examples/initial.json --gap-ms 12", "准时修订入湖"]
     },
     {
       "id": "seal",
-      "name": "封存当前水位内区间",
-      "entry": "python3 -B -m cyclerlake --db demo.sqlite ingest examples/initial.json --gap-ms 12",
-      "success": "按端点关闭区间且保留证据",
+      "name": "按来源选择封存区间",
+      "entry": "python3 -B -m cyclerlake --db demo.sqlite ingest examples/handover/chunk-primary-1.json --gap-ms 12",
+      "success": "按端点关闭区间且保留证据，接缝不卡尾段",
       "failure": "水位倒退不得重写结果",
       "verification": "python3 -B examples/smoke.py",
-      "module_ids": [
-        "contract",
-        "lake",
-        "intervals",
-        "__main__"
-      ],
-      "steps": [
-        "执行 ingest examples/initial.json --gap-ms 12",
-        "按端点关闭区间且保留证据"
-      ]
+      "module_ids": ["contract", "lake", "intervals", "__main__"],
+      "steps": ["声明材料后导入采样块", "按端点关闭区间且保留证据"]
     },
     {
       "id": "query",
-      "name": "读取电荷区间和迟到证据",
-      "entry": "python3 -B -m cyclerlake --db demo.sqlite query bench-larch",
-      "success": "返回区间和精确净电荷",
+      "name": "读取区间、来源选择与迟到证据",
+      "entry": "python3 -B -m cyclerlake --db demo.sqlite query bench-switch",
+      "success": "返回区间、各时段来源和精确净电荷",
       "failure": "未知运行时拒绝",
       "verification": "python3 -B examples/smoke.py",
-      "module_ids": [
-        "__main__",
-        "lake",
-        "intervals"
-      ],
-      "steps": [
-        "执行 query bench-larch",
-        "返回区间和精确净电荷"
-      ]
+      "module_ids": ["__main__", "lake", "intervals"],
+      "steps": ["执行 query bench-switch", "返回区间、各时段来源和精确净电荷"]
+    },
+    {
+      "id": "material",
+      "name": "声明优先级、锚点、可用时段与接缝证据",
+      "entry": "python3 -B -m cyclerlake --db demo.sqlite priority examples/handover/priority.json",
+      "success": "证据幂等入湖并驱动来源选择",
+      "failure": "与已封存事实冲突的证据拒绝",
+      "verification": "python3 -B examples/smoke.py",
+      "module_ids": ["contract", "lake", "intervals", "__main__"],
+      "steps": ["执行 priority/anchor/availability/seam", "证据幂等入湖并驱动来源选择"]
+    },
+    {
+      "id": "sign",
+      "name": "签收区间生成回执",
+      "entry": "python3 -B -m cyclerlake --db demo.sqlite sign bench-switch 1000 1030",
+      "success": "范围区间签出为回执并保留断点",
+      "failure": "重复签收或空范围拒绝",
+      "verification": "python3 -B examples/smoke.py",
+      "module_ids": ["lake", "intervals", "__main__"],
+      "steps": ["执行 sign bench-switch 1000 1030", "范围区间签出为回执并保留断点"]
+    },
+    {
+      "id": "correct",
+      "name": "按回执应用更正",
+      "entry": "python3 -B -m cyclerlake --db demo.sqlite correct examples/handover/correction-handover.json",
+      "success": "更正按修订序调整目标回执",
+      "failure": "重复申请不重复抵扣",
+      "verification": "python3 -B examples/smoke.py",
+      "module_ids": ["contract", "lake", "intervals", "__main__"],
+      "steps": ["执行 correct correction-handover.json", "更正按修订序调整目标回执"]
+    },
+    {
+      "id": "settle",
+      "name": "读取日常结算",
+      "entry": "python3 -B -m cyclerlake --db demo.sqlite settle bench-switch",
+      "success": "分立新覆盖电荷与旧回执正负更正",
+      "failure": "未知运行时拒绝",
+      "verification": "python3 -B examples/smoke.py",
+      "module_ids": ["__main__", "lake", "intervals"],
+      "steps": ["执行 settle bench-switch", "分立新覆盖电荷与旧回执正负更正"]
     }
   ],
   "complexity": {
     "mechanisms": [
-      {
-        "id": "ingest",
-        "workflow_ids": [
-          "ingest"
-        ],
-        "behavior": "准时修订入湖"
-      },
-      {
-        "id": "seal",
-        "workflow_ids": [
-          "seal"
-        ],
-        "behavior": "按端点关闭区间且保留证据"
-      },
-      {
-        "id": "query",
-        "workflow_ids": [
-          "query"
-        ],
-        "behavior": "返回区间和精确净电荷"
-      }
+      {"id": "ingest", "workflow_ids": ["ingest"], "behavior": "准时修订入湖"},
+      {"id": "seal", "workflow_ids": ["seal"], "behavior": "按端点关闭区间且保留证据"},
+      {"id": "query", "workflow_ids": ["query"], "behavior": "返回区间和精确净电荷"},
+      {"id": "material", "workflow_ids": ["material"], "behavior": "证据幂等入湖并驱动来源选择"},
+      {"id": "sign", "workflow_ids": ["sign"], "behavior": "范围区间签出为回执并保留断点"},
+      {"id": "correct", "workflow_ids": ["correct"], "behavior": "更正按修订序调整目标回执"},
+      {"id": "settle", "workflow_ids": ["settle"], "behavior": "分立新覆盖电荷与旧回执正负更正"}
     ]
   },
   "sample_source": "examples/initial.json"

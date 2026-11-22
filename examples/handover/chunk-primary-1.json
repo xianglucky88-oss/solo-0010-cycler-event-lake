@@ -1,0 +1,1 @@
+{"run":"bench-switch","chunk":"primary-card-1","device":"primary","boot":1,"seal_ms":30,"samples":[{"ms":0,"rev":1,"current_ma":100},{"ms":10,"rev":1,"current_ma":200},{"ms":20,"rev":1,"current_ma":300},{"ms":30,"rev":1,"current_ma":400}]}

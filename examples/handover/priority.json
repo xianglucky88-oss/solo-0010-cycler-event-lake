@@ -1,0 +1,1 @@
+{"run":"bench-switch","priorities":[{"device":"primary","boot":1,"rank":1},{"device":"backup","boot":1,"rank":2}]}
